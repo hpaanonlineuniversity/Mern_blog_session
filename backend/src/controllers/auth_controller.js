@@ -4,7 +4,7 @@ import bcryptjs from 'bcryptjs';
 import { errorHandler } from '../utils/error.js';
 import crypto from 'crypto';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../utils/emailService.js';
-import { redisClient } from '../configs/redis.js';
+
 
 export const signup = async (req, res, next) => {
   try {
@@ -66,24 +66,10 @@ export const signup = async (req, res, next) => {
       console.error('Failed to send verification email:', emailError);
     }
 
-    /*
-    // 7. ✅ Session မှာ user information သိမ်းမယ် (JWT မသုံးတော့ဘူး)
-    req.session.userId = newUser._id.toString();
-    req.session.username = newUser.username;
-    req.session.email = newUser.email;
-    req.session.isAdmin = newUser.isAdmin;
-    req.session.isLoggedIn = true;
-
-    // 8. Remove sensitive data from response
-    const { password: _, emailVerificationToken: __, ...userWithoutSensitiveData } = newUser._doc;
-
-    */
-
     // 9. Send success response
     res.status(201).json({
       success: true,
       message: 'User registered successfully. Please check your email for verification link.',
-      //user: userWithoutSensitiveData
     });
 
   } catch (error) {
@@ -291,7 +277,7 @@ export const signout = async (req, res, next) => {
       }
       
       // ✅ Cookie clear လုပ်မယ် - Session name ကိုသုံးမယ်
-      res.clearCookie('sessionId', { // ✅ 'connect.sid' အစား 'sessionId' သုံးမယ်
+      res.clearCookie('sessionId', {
         path: '/',
         httpOnly: true,
         sameSite: 'lax'
