@@ -76,13 +76,14 @@ app.use(session({
   rolling: false
 }));
 
+/*
 // ✅ Session logging middleware (Optional - Debugging အတွက်)
 app.use((req, res, next) => {
   console.log('Session ID:', req.sessionID);
   console.log('Session data:', req.session);
   next();
 });
-
+*/
 app.get('/', (req, res) => {
     res.send('Hello World!123');
 });

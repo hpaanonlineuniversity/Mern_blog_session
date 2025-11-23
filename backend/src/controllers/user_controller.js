@@ -13,52 +13,113 @@ export const updateUser = async (req, res, next) => {
     return next(errorHandler(403, 'You are not allowed to update this user'));
   }
 
-  if (req.body.password) {
-    if (req.body.password.length < 6) {
-      return next(errorHandler(400, 'Password must be at least 6 characters'));
-    }
-    req.body.password = bcryptjs.hashSync(req.body.password, 10);
-  }
-
-  if (req.body.username) {
-    if (req.body.username.length < 6 || req.body.username.length > 40) {
-      return next(errorHandler(400, 'Username must be between 6 and 20 characters'));
-    }
-    if (req.body.username.includes(' ')) {
-      return next(errorHandler(400, 'Username cannot contain spaces'));
-    }
-    if (req.body.username !== req.body.username.toLowerCase()) {
-      return next(errorHandler(400, 'Username must be lowercase'));
-    }
-    if (!req.body.username.match(/^[a-zA-Z0-9]+$/)) {
-      return next(errorHandler(400, 'Username can only contain letters and numbers'));
-    }
-  }
-
   try {
+    const { username, email, profilePicture, password } = req.body;
+    
+    // ✅ လက်ရှိ user data ကို ရယူမယ်
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return next(errorHandler(404, 'User not found'));
+    }
+
+    // ✅ Build update object dynamically
+    const updateData = {};
+
+    // Username update
+    if (username && username !== user.username) {
+      if (username.length < 6 || username.length > 40) {
+        return next(errorHandler(400, 'Username must be between 6 and 20 characters'));
+      }
+      if (username.includes(' ')) {
+        return next(errorHandler(400, 'Username cannot contain spaces'));
+      }
+      if (username !== username.toLowerCase()) {
+        return next(errorHandler(400, 'Username must be lowercase'));
+      }
+      if (!username.match(/^[a-zA-Z0-9]+$/)) {
+        return next(errorHandler(400, 'Username can only contain letters and numbers'));
+      }
+      
+      // Check if username already exists
+      const existingUser = await User.findOne({ username });
+      if (existingUser && existingUser._id.toString() !== req.params.userId) {
+        return next(errorHandler(409, 'Username already taken'));
+      }
+      
+      updateData.username = username;
+    }
+
+    // Email update
+    if (email && email !== user.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return next(errorHandler(400, 'Invalid email format'));
+      }
+      
+      // Check if email already exists
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser && existingUser._id.toString() !== req.params.userId) {
+        return next(errorHandler(409, 'Email already exists'));
+      }
+      
+      updateData.email = email.toLowerCase();
+    }
+
+    // Profile picture update
+    if (profilePicture !== undefined) {
+      updateData.profilePicture = profilePicture;
+    }
+
+    // Password update - Only if provided and not empty
+    if (password && password.trim() !== '') {
+      if (password.length < 6) {
+        return next(errorHandler(400, 'Password must be at least 6 characters'));
+      }
+      updateData.password = bcryptjs.hashSync(password, 10);
+    }
+    // ✅ If password is empty or not provided, keep the current password
+
+    // ✅ If no fields to update, return error
+    if (Object.keys(updateData).length === 0) {
+      return next(errorHandler(400, 'No fields to update'));
+    }
+
+    // ✅ Perform the update
     const updatedUser = await User.findByIdAndUpdate(
       req.params.userId,
-      {
-        $set: {
-          username: req.body.username,
-          email: req.body.email,
-          profilePicture: req.body.profilePicture,
-          password: req.body.password,
-        },
-      },
-      { new: true }
+      { $set: updateData },
+      { new: true, runValidators: true }
     );
 
-    // ✅ Session ကိုလည်း update လုပ်မယ်
+    // ✅ Update session data
     if (updatedUser) {
-      req.session.username = updatedUser.username;
-      req.session.email = updatedUser.email;
+      if (updateData.username) req.session.username = updatedUser.username;
+      if (updateData.email) req.session.email = updatedUser.email;
     }
 
-    const { password, ...rest } = updatedUser._doc;
-    res.status(200).json(rest);
+    // ✅ Prepare response without sensitive data
+    const { password: _, ...userResponse } = updatedUser._doc;
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: userResponse
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Update user error:', error);
+    
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return next(errorHandler(409, `${field} already exists`));
+    }
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return next(errorHandler(400, errors.join(', ')));
+    }
+    
+    next(errorHandler(500, 'Internal server error'));
   }
 };
 
