@@ -19,7 +19,6 @@ export default function SignIn() {
   const [formData, setFormData] = useState({});
   const [showResendOption, setShowResendOption] = useState(false);
   
-  // ✅ FIX: Safe state access with default values
   const { 
     loading, 
     error: errorMessage,
@@ -29,7 +28,6 @@ export default function SignIn() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // ✅ Initialize verification state on component mount
   useEffect(() => {
     dispatch(clearError());
     dispatch(initializeVerificationState());
@@ -38,12 +36,10 @@ export default function SignIn() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value.trim() });
-    // Reset resend option when user types
     if (showResendOption) {
       setShowResendOption(false);
       dispatch(clearVerification());
     }
-    // Clear error when user starts typing
     if (errorMessage) {
       dispatch(clearError());
     }
@@ -61,7 +57,7 @@ export default function SignIn() {
       const res = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        credentials: 'include', // ✅ Session အတွက် အရေးကြီးတယ်
         body: JSON.stringify(formData),
       });
       
@@ -81,15 +77,15 @@ export default function SignIn() {
         dispatch(signInFailure(data.message));
       }
 
-      if (res.ok) {
-        // User data ကို clear ဖြစ်အောင် format လုပ်ပါ
+      if (res.ok && data.success) {
+        // ✅ Session Version: Response structure ပြောင်းသွားတယ်
         const userData = {
-          _id: data._id,
-          username: data.username,
-          email: data.email,
-          profilePicture: data.profilePicture,
-          isAdmin: data.isAdmin,
-          isEmailVerified: data.isEmailVerified,
+          _id: data.user._id, // ✅ data.user အောက်မှာ ရှိတယ်
+          username: data.user.username,
+          email: data.user.email,
+          profilePicture: data.user.profilePicture,
+          isAdmin: data.user.isAdmin,
+          isEmailVerified: data.user.isEmailVerified,
         };
         dispatch(signInSuccess(userData));
         navigate('/');
@@ -110,14 +106,14 @@ export default function SignIn() {
       const res = await fetch('/api/auth/resend-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // ✅ Session အတွက် ထည့်ပါ
         body: JSON.stringify({ email: formData.email }),
       });
 
       const data = await res.json();
 
-      if (res.ok) {
+      if (res.ok && data.success) {
         dispatch(resendVerificationSuccess('✅ Verification email sent! Please check your inbox and spam folder.'));
-        // Auto hide after 5 seconds
         setTimeout(() => {
           setShowResendOption(false);
         }, 5000);
@@ -134,7 +130,6 @@ export default function SignIn() {
     dispatch(clearVerification());
   };
 
-  // ✅ FIX: Safe access to verification properties with fallbacks
   const verificationMessage = verification?.message || '';
   const verificationSuccess = verification?.success || false;
   const verificationLoading = verification?.loading || false;

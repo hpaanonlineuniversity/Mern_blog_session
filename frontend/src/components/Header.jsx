@@ -29,13 +29,34 @@ const Header = () => {
   }, [location.search]);
 
   const handleSignOut = async () => {
-    try {
-      await fetch(`/api/user/signout`);
+  try {
+    
+    const res = await fetch('/api/auth/signout', {
+      method: 'POST',
+      credentials: 'include' // ✅ This is crucial for session cookies
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      
+      // Clear frontend state
       dispatch(signOut());
-    } catch (error) {
-      console.log(error);
+      
+      // Clear any local storage
+      localStorage.removeItem('profilePicture');
+      
+      // Redirect to signin page
+      navigate('/sign-in');
+    } else {
+      console.error('❌ Signout failed:', data.message);
+      alert('Signout failed: ' + data.message);
     }
-  };
+  } catch (error) {
+    console.error('❌ Signout error:', error);
+    alert('Signout error: ' + error.message);
+  }
+};
 
   // ✅ NEW: Handle form submission
   const handleSubmit = (e) => {

@@ -1,6 +1,7 @@
 import { Avatar, Button, Card, Label, TextInput, Textarea, FileInput, Alert } from 'flowbite-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import {
   updateUserStart,
   updateUserSuccess,
@@ -24,6 +25,7 @@ export default function PrivateProfile() {
     profilePicture: currentUser?.profilePicture || ''
   });
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -172,14 +174,35 @@ export default function PrivateProfile() {
     }
   };
 
-  const handleSignOut = async () => {
-    try {
-      await fetch(`/api/user/signout`);
+const handleSignOut = async () => {
+  try {
+    
+    const res = await fetch('/api/auth/signout', {
+      method: 'POST',
+      credentials: 'include' // ✅ This is crucial for session cookies
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      
+      // Clear frontend state
       dispatch(signOut());
-    } catch (error) {
-      console.log(error);
+      
+      // Clear any local storage
+      localStorage.removeItem('profilePicture');
+      
+      // Redirect to signin page
+      navigate('/sign-in');
+    } else {
+      console.error('❌ Signout failed:', data.message);
+      alert('Signout failed: ' + data.message);
     }
-  };
+  } catch (error) {
+    console.error('❌ Signout error:', error);
+    alert('Signout error: ' + error.message);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">

@@ -10,7 +10,7 @@ import {
 } from 'react-icons/hi';
 
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation , useNavigate } from 'react-router';
 import { signOut } from '../redux/user/userSlice';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -19,16 +19,38 @@ export default function DashSidebar() {
   const dispatch = useDispatch();
   const { currentUser } = useSelector((state) => state.user);
   const [tab, setTab] = useState('');
+  const navigate = useNavigate();
 
 
-    const handleSignOut = async () => {
-        try {
-                await fetch(`/api/user/signout`);
-                dispatch(signOut());
-                } catch (error) {
-                console.log(error);
-                }
-         };
+const handleSignOut = async () => {
+  try {
+    
+    const res = await fetch('/api/auth/signout', {
+      method: 'POST',
+      credentials: 'include' // ✅ This is crucial for session cookies
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      
+      // Clear frontend state
+      dispatch(signOut());
+      
+      // Clear any local storage
+      localStorage.removeItem('profilePicture');
+      
+      // Redirect to signin page
+      navigate('/sign-in');
+    } else {
+      console.error('❌ Signout failed:', data.message);
+      alert('Signout failed: ' + data.message);
+    }
+  } catch (error) {
+    console.error('❌ Signout error:', error);
+    alert('Signout error: ' + error.message);
+  }
+};
 
   return (
     <Sidebar className='w-full md:w-56'>

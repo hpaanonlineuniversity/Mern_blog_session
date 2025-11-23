@@ -1,6 +1,7 @@
 import { Avatar, Button, Card, Label, TextInput, Textarea, FileInput, Alert } from 'flowbite-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRef, useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router';
 import {
   updateUserStart,
   updateUserSuccess,
@@ -10,7 +11,6 @@ import {
   deleteUserFailure,
   signOut,
 } from '../redux/user/userSlice';
-import { Link } from 'react-router';
 
 export default function DashProfile() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
@@ -25,6 +25,7 @@ export default function DashProfile() {
     profilePicture: currentUser?.profilePicture || ''
   });
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -174,13 +175,34 @@ export default function DashProfile() {
   };
 
   const handleSignOut = async () => {
-    try {
-      await fetch(`/api/user/signout`);
+  try {
+    
+    const res = await fetch('/api/auth/signout', {
+      method: 'POST',
+      credentials: 'include' // ✅ This is crucial for session cookies
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      
+      // Clear frontend state
       dispatch(signOut());
-    } catch (error) {
-      console.log(error);
+      
+      // Clear any local storage
+      localStorage.removeItem('profilePicture');
+      
+      // Redirect to signin page
+      navigate('/sign-in');
+    } else {
+      console.error('❌ Signout failed:', data.message);
+      alert('Signout failed: ' + data.message);
     }
-  };
+  } catch (error) {
+    console.error('❌ Signout error:', error);
+    alert('Signout error: ' + error.message);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-8 px-4">

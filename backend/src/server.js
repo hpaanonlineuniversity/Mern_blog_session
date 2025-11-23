@@ -56,19 +56,24 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(cookieParser());
 
-// ✅ Session middleware
+// server.js - Updated session configuration
 app.use(session({
   store: redisStore,
   secret: SESSION_SECRET, 
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Development အတွက် false, Production မှာ true ပြောင်းပါ
+    secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 1 day
-    sameSite: 'lax' // ✅ ဒါထပ်ထည့်ပါ
+    sameSite: 'lax',
+    path: '/'
   },
-  name: 'sessionId' // ✅ Optional: Custom session cookie name
+  name: 'sessionId',
+  // ✅ Important: Add these settings for proper cleanup
+  unset: 'destroy',
+  // ✅ Add rolling sessions to prevent stale sessions
+  rolling: false
 }));
 
 // ✅ Session logging middleware (Optional - Debugging အတွက်)

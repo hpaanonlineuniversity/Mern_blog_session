@@ -4,6 +4,7 @@ import bcryptjs from 'bcryptjs';
 import { errorHandler } from '../utils/error.js';
 import crypto from 'crypto';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../utils/emailService.js';
+import { redisClient } from '../configs/redis.js';
 
 export const signup = async (req, res, next) => {
   try {
@@ -65,6 +66,7 @@ export const signup = async (req, res, next) => {
       console.error('Failed to send verification email:', emailError);
     }
 
+    /*
     // 7. ✅ Session မှာ user information သိမ်းမယ် (JWT မသုံးတော့ဘူး)
     req.session.userId = newUser._id.toString();
     req.session.username = newUser.username;
@@ -75,11 +77,13 @@ export const signup = async (req, res, next) => {
     // 8. Remove sensitive data from response
     const { password: _, emailVerificationToken: __, ...userWithoutSensitiveData } = newUser._doc;
 
+    */
+
     // 9. Send success response
     res.status(201).json({
       success: true,
       message: 'User registered successfully. Please check your email for verification link.',
-      user: userWithoutSensitiveData
+      //user: userWithoutSensitiveData
     });
 
   } catch (error) {
@@ -202,13 +206,14 @@ export const signin = async (req, res, next) => {
     req.session.isAdmin = validUser.isAdmin;
     req.session.isLoggedIn = true;
 
-    const { password: pass, ...rest } = validUser._doc;
+    //const { password: pass, ...rest } = validUser._doc;
+    const { password: _, emailVerificationToken: __, emailVerificationExpires: ___, ...userWithoutSensitiveData } = validUser._doc;
 
     // ✅ Cookie မှာ token မထည့်တော့ဘူး
     res.status(200).json({
       success: true,
       message: 'Signin successful',
-      user: rest
+      user: userWithoutSensitiveData
     });
   } catch (error) {
     next(error);
@@ -235,11 +240,13 @@ export const google = async (req, res, next) => {
       req.session.isAdmin = user.isAdmin;
       req.session.isLoggedIn = true;
 
-      const { password, ...rest } = user._doc;
+      //const { password, ...rest } = user._doc;
+      const { password: _, emailVerificationToken: __, emailVerificationExpires: ___, ...userWithoutSensitiveData } = user._doc;
+
       res.status(200).json({
         success: true,
         message: 'Google signin successful',
-        user: rest
+        user: userWithoutSensitiveData
       });
     } else {
       const generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
@@ -260,11 +267,12 @@ export const google = async (req, res, next) => {
       req.session.isAdmin = newUser.isAdmin;
       req.session.isLoggedIn = true;
 
-      const { password, ...rest } = newUser._doc;
+      //const { password, ...rest } = newUser._doc;
+      const { password: _, emailVerificationToken: __, emailVerificationExpires: ___, ...userWithoutSensitiveData } = user._doc;
       res.status(200).json({
         success: true,
         message: 'Google signin successful',
-        user: rest
+        user: userWithoutSensitiveData
       });
     }
   } catch (error) {
@@ -272,23 +280,30 @@ export const google = async (req, res, next) => {
   }
 };
 
-// ✅ Signout - Session ကို destroy လုပ်မယ်
+// controllers/auth_controller.js
 export const signout = async (req, res, next) => {
   try {
     // Session destroy လုပ်မယ်
     req.session.destroy((err) => {
       if (err) {
+        console.error('Session destroy error:', err);
         return next(errorHandler(500, 'Could not sign out'));
       }
       
-      // Cookie clear လုပ်မယ်
-      res.clearCookie('connect.sid'); // Default session cookie name
+      // ✅ Cookie clear လုပ်မယ် - Session name ကိုသုံးမယ်
+      res.clearCookie('sessionId', { // ✅ 'connect.sid' အစား 'sessionId' သုံးမယ်
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax'
+      });
+      
       res.status(200).json({
         success: true,
         message: 'Signed out successfully'
       });
     });
   } catch (error) {
+    console.error('Signout error:', error);
     next(errorHandler(500, 'Error during signout'));
   }
 };
