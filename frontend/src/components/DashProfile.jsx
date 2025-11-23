@@ -133,8 +133,17 @@ export default function DashProfile() {
         dispatch(updateUserFailure(data));
         return;
       }
+
+      const userData = {
+          _id: data.user._id,
+          username: data.user.username,
+          email: data.user.email,
+          profilePicture: data.user.profilePicture,
+          isAdmin: data.user.isAdmin,
+          isEmailVerified: data.user.isEmailVerified,
+        };
       
-      dispatch(updateUserSuccess(data));
+      dispatch(updateUserSuccess(userData));
       setUpdateSuccess(true);
       
       setTimeout(() => {

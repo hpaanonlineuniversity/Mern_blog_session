@@ -254,7 +254,7 @@ export const google = async (req, res, next) => {
       req.session.isLoggedIn = true;
 
       //const { password, ...rest } = newUser._doc;
-      const { password: _, emailVerificationToken: __, emailVerificationExpires: ___, ...userWithoutSensitiveData } = user._doc;
+      const { password: _, emailVerificationToken: __, emailVerificationExpires: ___, ...userWithoutSensitiveData } = newUser._doc;
       res.status(200).json({
         success: true,
         message: 'Google signin successful',
